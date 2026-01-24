@@ -13,10 +13,10 @@ import {
 const router = Router();
 
 // Create a new session
-router.post('/', requireAuth, (req, res) => {
+router.post('/', requireAuth, async (req, res) => {
   try {
     const sessionId = uuidv4();
-    const session = createSession(sessionId, req.user!.id);
+    const session = await createSession(sessionId, req.user!.id);
     res.status(201).json({ session });
   } catch (error) {
     console.error('Error creating session:', error);
@@ -25,9 +25,9 @@ router.post('/', requireAuth, (req, res) => {
 });
 
 // Get user's sessions
-router.get('/', requireAuth, (req, res) => {
+router.get('/', requireAuth, async (req, res) => {
   try {
-    const sessions = getUserSessions(req.user!.id);
+    const sessions = await getUserSessions(req.user!.id);
     res.json({ sessions });
   } catch (error) {
     console.error('Error fetching sessions:', error);
@@ -36,9 +36,10 @@ router.get('/', requireAuth, (req, res) => {
 });
 
 // Get a specific session with messages
-router.get('/:id', requireAuth, (req, res) => {
+router.get('/:id', requireAuth, async (req, res) => {
   try {
-    const session = getSession(req.params.id);
+    const sessionId = req.params.id as string;
+    const session = await getSession(sessionId);
 
     if (!session) {
       return res.status(404).json({ error: 'Session not found' });
@@ -49,7 +50,7 @@ router.get('/:id', requireAuth, (req, res) => {
       return res.status(403).json({ error: 'Access denied' });
     }
 
-    const messages = getSessionMessages(req.params.id);
+    const messages = await getSessionMessages(sessionId);
     res.json({ session, messages });
   } catch (error) {
     console.error('Error fetching session:', error);
@@ -58,9 +59,10 @@ router.get('/:id', requireAuth, (req, res) => {
 });
 
 // Update a session (end session, add rating)
-router.patch('/:id', requireAuth, (req, res) => {
+router.patch('/:id', requireAuth, async (req, res) => {
   try {
-    const session = getSession(req.params.id);
+    const sessionId = req.params.id as string;
+    const session = await getSession(sessionId);
 
     if (!session) {
       return res.status(404).json({ error: 'Session not found' });
@@ -83,9 +85,9 @@ router.patch('/:id', requireAuth, (req, res) => {
       updates.rating = rating;
     }
 
-    updateSession(req.params.id, updates);
+    await updateSession(sessionId, updates);
 
-    const updatedSession = getSession(req.params.id);
+    const updatedSession = await getSession(sessionId);
     res.json({ session: updatedSession });
   } catch (error) {
     console.error('Error updating session:', error);

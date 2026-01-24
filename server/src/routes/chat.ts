@@ -21,7 +21,7 @@ router.post('/message', requireAuth, async (req, res) => {
     }
 
     // Verify session exists and belongs to user
-    const session = getSession(sessionId);
+    const session = await getSession(sessionId);
     console.log('Session found:', session ? 'yes' : 'no');
 
     if (!session) {
@@ -37,18 +37,18 @@ router.post('/message', requireAuth, async (req, res) => {
     }
 
     // Get conversation history
-    const history = getSessionMessages(sessionId);
+    const history = await getSessionMessages(sessionId);
 
     // Save user message
     const userMessageId = uuidv4();
-    const userMessage = addMessage(userMessageId, sessionId, 'user', content);
+    const userMessage = await addMessage(userMessageId, sessionId, 'user', content);
 
     // Generate AI response
     const aiResponse = await generateResponse(history, content);
 
     // Save AI response
     const assistantMessageId = uuidv4();
-    const assistantMessage = addMessage(assistantMessageId, sessionId, 'assistant', aiResponse);
+    const assistantMessage = await addMessage(assistantMessageId, sessionId, 'assistant', aiResponse);
 
     res.json({
       userMessage,

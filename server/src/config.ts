@@ -25,7 +25,11 @@ export const config = {
   appUrl,
   allowedEmails: (process.env.ALLOWED_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean),
   isDev,
-  // Database path - use /app/data in production (Cloud Run), local path in dev
+  // Google Cloud Project ID for Firestore
+  googleProjectId: process.env.GOOGLE_PROJECT_ID || '',
+  // Use Firestore in production, SQLite in dev (can override with USE_FIRESTORE=true)
+  useFirestore: !isDev || process.env.USE_FIRESTORE === 'true',
+  // Database path for SQLite (used in dev only)
   dbPath: isDev
     ? path.resolve(__dirname, '../data/compoundingclarity.db')
     : '/app/data/compoundingclarity.db',

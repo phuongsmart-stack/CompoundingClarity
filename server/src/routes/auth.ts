@@ -34,8 +34,8 @@ export function initializePassportStrategy(): void {
             return done(null, false, { message: 'This email is not authorized to use this application' });
           }
 
-          // Find or create user
-          const user = findOrCreateUser({
+          // Find or create user (async for Firestore)
+          const user = await findOrCreateUser({
             id: profile.id,
             email,
             displayName: profile.displayName,
@@ -56,10 +56,10 @@ passport.serializeUser((user, done) => {
   done(null, (user as User).id);
 });
 
-// Deserialize user from session
-passport.deserializeUser((id: string, done) => {
+// Deserialize user from session (async for Firestore)
+passport.deserializeUser(async (id: string, done) => {
   try {
-    const user = getUserById(id);
+    const user = await getUserById(id);
     done(null, user || null);
   } catch (error) {
     done(error);
