@@ -1,9 +1,18 @@
 # Build stage for frontend
 FROM node:20-alpine AS frontend-builder
 WORKDIR /app
+
+# Copy all files first (needed for postinstall script)
 COPY package*.json ./
+COPY server/package*.json ./server/
+
+# Install dependencies (this will also run postinstall which installs server deps)
 RUN npm ci
+
+# Copy remaining source files
 COPY . .
+
+# Build frontend
 RUN npm run build
 
 # Build stage for backend
@@ -27,9 +36,6 @@ COPY --from=backend-builder /app/server/dist ./dist
 
 # Copy built frontend to be served as static files
 COPY --from=frontend-builder /app/dist ./public
-
-# Create data directory for SQLite
-RUN mkdir -p /app/data
 
 # Set environment variables
 ENV NODE_ENV=production
