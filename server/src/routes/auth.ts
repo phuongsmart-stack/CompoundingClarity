@@ -74,8 +74,11 @@ router.get(
   '/google/callback',
   passport.authenticate('google', { failureRedirect: '/session?error=unauthorized' }),
   (req, res) => {
-    // Successful authentication
-    res.redirect(`${config.frontendUrl}/session?auth=success`);
+    // Successful authentication - in production, redirect to same origin
+    const redirectUrl = config.isDev
+      ? `${config.frontendUrl}/session?auth=success`
+      : '/session?auth=success';
+    res.redirect(redirectUrl);
   }
 );
 

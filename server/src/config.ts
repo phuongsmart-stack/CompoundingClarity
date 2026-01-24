@@ -1,8 +1,16 @@
 import dotenv from 'dotenv';
 import path from 'path';
 
-// Load .env from project root
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+// Load .env from project root (only in development)
+if (process.env.NODE_ENV !== 'production') {
+  dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+}
+
+const isDev = process.env.NODE_ENV !== 'production';
+
+// In production, construct callback URL from APP_URL
+const appUrl = process.env.APP_URL || (isDev ? 'http://localhost:3001' : '');
+const callbackURL = process.env.GOOGLE_CALLBACK_URL || `${appUrl}/api/auth/google/callback`;
 
 export const config = {
   port: parseInt(process.env.PORT || '3001', 10),
@@ -10,12 +18,17 @@ export const config = {
   google: {
     clientId: process.env.GOOGLE_CLIENT_ID || '',
     clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
-    callbackURL: process.env.GOOGLE_CALLBACK_URL || 'http://localhost:3001/api/auth/google/callback',
+    callbackURL,
   },
   anthropicApiKey: process.env.ANTHROPIC_API_KEY || '',
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:8080',
+  appUrl,
   allowedEmails: (process.env.ALLOWED_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean),
-  isDev: process.env.NODE_ENV !== 'production',
+  isDev,
+  // Database path - use /app/data in production (Cloud Run), local path in dev
+  dbPath: isDev
+    ? path.resolve(__dirname, '../data/compoundingclarity.db')
+    : '/app/data/compoundingclarity.db',
 };
 
 export function validateConfig(): void {

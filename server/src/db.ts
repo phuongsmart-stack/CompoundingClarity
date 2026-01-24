@@ -1,10 +1,11 @@
 import Database from 'better-sqlite3';
 import path from 'path';
+import fs from 'fs';
+import { config } from './config';
 
-const dbPath = path.resolve(__dirname, '../data/truthcompass.db');
+const dbPath = config.dbPath;
 
 // Ensure data directory exists
-import fs from 'fs';
 const dataDir = path.dirname(dbPath);
 if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });

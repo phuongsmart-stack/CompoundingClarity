@@ -1,7 +1,7 @@
 {
-  "name": "truthcompass-server",
+  "name": "compoundingclarity-server",
   "version": "1.0.0",
-  "description": "TruthCompass AI Backend Server",
+  "description": "CompoundingClarity AI Coaching Backend Server",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
