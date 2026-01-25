@@ -709,21 +709,44 @@ export async function generateResponse(
     console.log('Calling Claude API with', messages.length, 'messages');
     const response = await client.messages.create({
       model: 'claude-sonnet-4-5-20250929',
-      max_tokens: 1024,
+      max_tokens: 4096,
       system: SYSTEM_PROMPT,
       messages,
     });
 
+    console.log('Claude API response received. Content blocks:', response.content.length);
+
     // Extract text from the response
     const textContent = response.content.find(block => block.type === 'text');
     if (textContent && textContent.type === 'text') {
+      console.log('Response text length:', textContent.text.length);
       return textContent.text;
     }
 
+    console.error('No text content found in Claude response');
     return "I'm sorry, I couldn't generate a response. Please try again.";
   } catch (error: any) {
-    console.error('Claude API error:', error?.message || error);
-    console.error('Error details:', JSON.stringify(error, null, 2));
+    console.error('=== Claude API error ===');
+    console.error('Error type:', error?.constructor?.name);
+    console.error('Error message:', error?.message);
+    console.error('Error status:', error?.status);
+    console.error('Error code:', error?.error?.type);
+
+    if (error?.error) {
+      console.error('API error details:', JSON.stringify(error.error, null, 2));
+    }
+
+    // Provide more helpful error messages based on error type
+    if (error?.status === 429) {
+      throw new Error('Rate limit exceeded. Please wait a moment and try again.');
+    } else if (error?.status === 401) {
+      throw new Error('Authentication failed. Please check API key configuration.');
+    } else if (error?.status === 500) {
+      throw new Error('Claude API is experiencing issues. Please try again in a moment.');
+    } else if (error?.message?.includes('timeout')) {
+      throw new Error('Request timed out. Please try again.');
+    }
+
     throw new Error(error?.message || 'Failed to generate AI response');
   }
 }

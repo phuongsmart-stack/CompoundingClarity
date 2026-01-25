@@ -73,7 +73,23 @@ const ChatStep = ({ sessionId, onEndSession }: ChatStepProps) => {
         return [...filtered, userMessage, assistantMessage];
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to send message");
+      console.error('Chat error:', err);
+      let errorMessage = "Failed to send message";
+
+      if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+
+      // Provide more helpful error messages
+      if (errorMessage.includes('timeout') || errorMessage.includes('Timeout')) {
+        errorMessage = "The request took too long. Please try again with a shorter message.";
+      } else if (errorMessage.includes('network') || errorMessage.includes('fetch')) {
+        errorMessage = "Network error. Please check your connection and try again.";
+      } else if (errorMessage.includes('401') || errorMessage.includes('authentication')) {
+        errorMessage = "Session expired. Please refresh the page and log in again.";
+      }
+
+      setError(errorMessage);
       // Remove the temp message on error
       setMessages((prev) => prev.filter((m) => m.id !== tempUserMessage.id));
     } finally {

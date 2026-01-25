@@ -19,6 +19,10 @@ const app = express();
 // Trust proxy for Cloud Run
 app.set('trust proxy', 1);
 
+// Set server timeout to 5 minutes (Cloud Run max is 60 minutes)
+// This prevents connections from hanging indefinitely
+const SERVER_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+
 // Middleware
 app.use(cors({
   origin: config.isDev ? config.frontendUrl : true, // Allow same-origin in production
@@ -72,8 +76,15 @@ if (!config.isDev) {
 }
 
 // Start server
-app.listen(config.port, () => {
+const server = app.listen(config.port, () => {
   console.log(`Server running on http://localhost:${config.port}`);
   console.log(`Environment: ${config.isDev ? 'development' : 'production'}`);
   console.log(`Allowed emails: ${config.allowedEmails.join(', ') || 'ALL (no restrictions)'}`);
 });
+
+// Set server timeout
+server.timeout = SERVER_TIMEOUT;
+server.keepAliveTimeout = 65000; // Slightly higher than Cloud Run's load balancer (60s)
+server.headersTimeout = 66000; // Slightly higher than keepAliveTimeout
+
+console.log(`Server timeout set to ${SERVER_TIMEOUT / 1000} seconds`);

@@ -38,24 +38,34 @@ router.post('/message', requireAuth, async (req, res) => {
 
     // Get conversation history
     const history = await getSessionMessages(sessionId);
+    console.log('Conversation history:', history.length, 'messages');
 
     // Save user message
     const userMessageId = uuidv4();
     const userMessage = await addMessage(userMessageId, sessionId, 'user', content);
+    console.log('User message saved:', userMessageId);
 
     // Generate AI response
+    console.log('Generating AI response...');
     const aiResponse = await generateResponse(history, content);
+    console.log('AI response generated:', aiResponse.substring(0, 100));
 
     // Save AI response
     const assistantMessageId = uuidv4();
     const assistantMessage = await addMessage(assistantMessageId, sessionId, 'assistant', aiResponse);
+    console.log('Assistant message saved:', assistantMessageId);
 
     res.json({
       userMessage,
       assistantMessage,
     });
   } catch (error: any) {
-    console.error('Error in chat message:', error?.message || error);
+    console.error('=== ERROR in chat message ===');
+    console.error('Error type:', error?.constructor?.name);
+    console.error('Error message:', error?.message);
+    console.error('Error stack:', error?.stack);
+    console.error('Full error:', JSON.stringify(error, null, 2));
+
     res.status(500).json({
       error: 'Failed to process message',
       details: error?.message || 'Unknown error'
