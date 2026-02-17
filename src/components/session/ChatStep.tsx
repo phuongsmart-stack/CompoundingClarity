@@ -92,9 +92,9 @@ const ChatStep = ({ sessionId, onEndSession }: ChatStepProps) => {
   const currentTurnStart = Math.max(0, messages.length - 2);
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="h-screen flex flex-col">
       {/* Header */}
-      <header className="border-b border-border bg-background/95 backdrop-blur-sm px-6 py-4">
+      <header className="sticky top-0 z-10 border-b border-border bg-background/95 backdrop-blur-sm px-6 py-4 flex-shrink-0">
         <div className="max-w-3xl mx-auto flex items-center justify-between">
           <div>
             <h1 className="font-serif text-xl text-foreground">
@@ -174,7 +174,7 @@ const ChatStep = ({ sessionId, onEndSession }: ChatStepProps) => {
       </div>
 
       {/* Input area */}
-      <div className="border-t border-border bg-background/95 backdrop-blur-sm px-6 py-4">
+      <div className="flex-shrink-0 border-t border-border bg-background/95 backdrop-blur-sm px-6 py-4">
         <div className="max-w-3xl mx-auto">
           <div className="flex gap-3 items-end">
             <Textarea
