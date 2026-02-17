@@ -1,30 +1,42 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { sessionsApi, ChatSession } from "@/api";
+import { sessionsApi, ChatSession, Message } from "@/api";
 import LoginStep from "@/components/session/LoginStep";
+import ActiveSessionsStep from "@/components/session/ActiveSessionsStep";
 import PreparationStep from "@/components/session/PreparationStep";
 import ChatStep from "@/components/session/ChatStep";
 import FeedbackStep from "@/components/session/FeedbackStep";
 
-type SessionStep = "login" | "preparation" | "chat" | "feedback";
+type SessionStep = "login" | "active-sessions" | "preparation" | "chat" | "feedback";
 
 const Session = () => {
+  const { sessionId: urlSessionId } = useParams<{ sessionId?: string }>();
   const { user, loading, error: authError } = useAuth();
   const [step, setStep] = useState<SessionStep>("login");
   const [chatSession, setChatSession] = useState<ChatSession | null>(null);
+  const [initialMessages, setInitialMessages] = useState<Message[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const resumeAttempted = useRef(false);
 
   // Sync step with auth state
   useEffect(() => {
     if (!loading) {
       if (user && step === "login") {
-        setStep("preparation");
+        // If URL has a sessionId, try to resume it directly
+        if (urlSessionId && !resumeAttempted.current) {
+          resumeAttempted.current = true;
+          handleResumeSession(urlSessionId);
+        } else {
+          setStep("active-sessions");
+        }
       } else if (!user && step !== "login") {
         setStep("login");
         setChatSession(null);
+        setInitialMessages(null);
       }
     }
-  }, [user, loading, step]);
+  }, [user, loading, step]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Show auth errors
   useEffect(() => {
@@ -33,11 +45,30 @@ const Session = () => {
     }
   }, [authError]);
 
+  const handleResumeSession = async (sessionId: string) => {
+    try {
+      setError(null);
+      const { session, messages } = await sessionsApi.get(sessionId);
+      if (session.status !== "active") {
+        setError("That session has already ended.");
+        setStep("active-sessions");
+        return;
+      }
+      setChatSession(session);
+      setInitialMessages(messages);
+      setStep("chat");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to resume session");
+      setStep("active-sessions");
+    }
+  };
+
   const handleCommit = async () => {
     try {
       setError(null);
       const { session } = await sessionsApi.create();
       setChatSession(session);
+      setInitialMessages(null);
       setStep("chat");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to start session");
@@ -85,9 +116,19 @@ const Session = () => {
         </div>
       )}
       {step === "login" && <LoginStep />}
+      {step === "active-sessions" && (
+        <ActiveSessionsStep
+          onResume={handleResumeSession}
+          onStartNew={() => setStep("preparation")}
+        />
+      )}
       {step === "preparation" && <PreparationStep onCommit={handleCommit} />}
       {step === "chat" && chatSession && (
-        <ChatStep sessionId={chatSession.id} onEndSession={handleEndSession} />
+        <ChatStep
+          sessionId={chatSession.id}
+          onEndSession={handleEndSession}
+          initialMessages={initialMessages}
+        />
       )}
       {step === "feedback" && chatSession && (
         <FeedbackStep sessionId={chatSession.id} onComplete={handleFeedbackComplete} />
