@@ -71,3 +71,9 @@ Yes, you can!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+
+## Product Documentation (PRDs)
+
+All product feature documentation lives in the [`PRDs/`](./PRDs/) folder. Start with [00-product-overview.md](./PRDs/00-product-overview.md) for a full summary and links to each feature document.
+
+> **Important:** Whenever a product feature is added, changed, or removed, the corresponding PRD document **must** be updated to reflect the current state of the product. This ensures the documentation stays accurate and useful for everyone on the team — designers, developers, and stakeholders alike. If a new feature is introduced that doesn't fit into an existing document, create a new numbered file following the existing naming convention (e.g., `07-new-feature.md`) and add it to the table in `00-product-overview.md`.
