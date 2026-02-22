@@ -690,6 +690,121 @@ The client is whole, capable, and resourceful. Your job is to help them access w
 
 **When in doubt, ask less and listen more.**`;
 
+// ---------------------------------------------------------------------------
+// Senior Coach Supervisor – reviews coach responses for ICF compliance
+// Uses Haiku for speed and cost efficiency (review is classification, not generation)
+// ---------------------------------------------------------------------------
+
+const REVIEW_MODEL = 'claude-haiku-4-5-20251001';
+
+const SENIOR_COACH_PROMPT = `You are a Senior ICF Coaching Supervisor. Your job is to review an AI coach's response and flag violations of ICF coaching principles.
+
+## Evaluate for these violations:
+
+1. **Advice-giving** – Coach gave direct advice, suggested specific solutions, or offered frameworks/tools without being asked.
+2. **Consulting** – Coach analyzed the problem and thought FOR the client rather than helping them think.
+3. **Leading questions** – Coach asked questions with embedded suggestions ("Have you considered...?", "What if you tried...?").
+4. **Multiple questions** – Coach asked more than one question in a single response, overwhelming the client.
+5. **Rescuing** – Coach rushed to fix discomfort, offered systems/tools, or moved to action when the client showed overwhelm.
+6. **Validation/Collusion** – Coach endorsed conclusions ("That makes sense", "That's healthy", "That's a wise choice") instead of exploring further.
+7. **Boundary violation** – Coach acted as therapist, diagnosed, or interpreted trauma.
+8. **Rushing past golden moments** – Coach moved past a sudden insight, charged language, contradiction, or topic shift without exploring it.
+9. **Becoming external authority** – Coach positioned itself as the expert or decision-maker rather than redirecting to client's own knowing.
+
+## Response format:
+
+Respond with ONLY a valid JSON object. No markdown, no backticks, no extra text.
+
+{
+  "verdict": "PASS or NUDGE",
+  "violations": ["list of specific violations, empty array if PASS"],
+  "feedback": "concrete guidance on how to revise, empty string if PASS"
+}
+
+## Calibration:
+
+- If the response is solid coaching (even if imperfect), verdict is PASS.
+- Only NUDGE for clear, unambiguous violations.
+- Minor tone issues or slightly imperfect phrasing are NOT violations.
+- A single well-chosen question is good coaching even if you could imagine a "better" one.`;
+
+interface ReviewResult {
+  verdict: 'PASS' | 'NUDGE';
+  violations: string[];
+  feedback: string;
+}
+
+async function reviewResponse(
+  conversationHistory: Message[],
+  userMessage: string,
+  coachResponse: string
+): Promise<ReviewResult> {
+  // Include last 6 messages for context (3 exchanges)
+  const recentHistory = conversationHistory.slice(-6);
+  const contextText = recentHistory
+    .map(m => `${m.role.toUpperCase()}: ${m.content}`)
+    .join('\n\n');
+
+  const reviewMessage = `## Recent Conversation Context:
+${contextText}
+
+## Latest Client Message:
+${userMessage}
+
+## Coach's Response to Evaluate:
+${coachResponse}`;
+
+  try {
+    const response = await client.messages.create({
+      model: REVIEW_MODEL,
+      max_tokens: 512,
+      system: SENIOR_COACH_PROMPT,
+      messages: [{ role: 'user', content: reviewMessage }],
+    });
+
+    const textContent = response.content.find(block => block.type === 'text');
+    if (textContent && textContent.type === 'text') {
+      const parsed = JSON.parse(textContent.text);
+      return {
+        verdict: parsed.verdict === 'NUDGE' ? 'NUDGE' : 'PASS',
+        violations: parsed.violations || [],
+        feedback: parsed.feedback || '',
+      };
+    }
+
+    return { verdict: 'PASS', violations: [], feedback: '' };
+  } catch (error: any) {
+    // Default to PASS on error — never block the user's experience
+    console.error('Senior coach review error:', error?.message || error);
+    return { verdict: 'PASS', violations: [], feedback: '' };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Core Claude call – shared by initial generation and revision
+// ---------------------------------------------------------------------------
+
+async function callCoach(messages: Anthropic.MessageParam[]): Promise<string> {
+  const response = await client.messages.create({
+    model: 'claude-sonnet-4-5-20250929',
+    max_tokens: 1024,
+    system: SYSTEM_PROMPT,
+    messages,
+  });
+
+  const textContent = response.content.find(block => block.type === 'text');
+  if (textContent && textContent.type === 'text') {
+    return textContent.text;
+  }
+
+  return "I'm sorry, I couldn't generate a response. Please try again.";
+}
+
+// ---------------------------------------------------------------------------
+// Public API – generates a reviewed coaching response
+// Flow: Coach → Senior Review → (if nudged) Coach revises with feedback
+// ---------------------------------------------------------------------------
+
 export async function generateResponse(
   conversationHistory: Message[],
   userMessage: string
@@ -699,28 +814,49 @@ export async function generateResponse(
     content: msg.content,
   }));
 
-  // Add the new user message
   messages.push({
     role: 'user',
     content: userMessage,
   });
 
   try {
-    console.log('Calling Claude API with', messages.length, 'messages');
-    const response = await client.messages.create({
-      model: 'claude-sonnet-4-5-20250929',
-      max_tokens: 1024,
-      system: SYSTEM_PROMPT,
-      messages,
-    });
+    // Step 1: Generate initial coach response
+    console.log('[Coach] Generating response with', messages.length, 'messages');
+    const coachResponse = await callCoach(messages);
 
-    // Extract text from the response
-    const textContent = response.content.find(block => block.type === 'text');
-    if (textContent && textContent.type === 'text') {
-      return textContent.text;
+    // Step 2: Senior coach reviews the response
+    const review = await reviewResponse(conversationHistory, userMessage, coachResponse);
+    console.log(
+      '[Senior Coach Review]', review.verdict,
+      review.violations.length > 0 ? `— ${review.violations.join('; ')}` : ''
+    );
+
+    if (review.verdict === 'PASS') {
+      return coachResponse;
     }
 
-    return "I'm sorry, I couldn't generate a response. Please try again.";
+    // Step 3: Coach revises with supervisor feedback (one attempt, no loop)
+    console.log('[Coach] Revising response based on supervisor feedback');
+    const revisionMessages: Anthropic.MessageParam[] = [
+      ...messages,
+      { role: 'assistant', content: coachResponse },
+      {
+        role: 'user',
+        content: [
+          '[SENIOR COACHING SUPERVISOR FEEDBACK]',
+          '',
+          'Your response has been flagged for the following issues:',
+          ...review.violations.map(v => `• ${v}`),
+          '',
+          `Guidance: ${review.feedback}`,
+          '',
+          'Please revise your response to the client. Provide only the revised response.',
+        ].join('\n'),
+      },
+    ];
+
+    const revisedResponse = await callCoach(revisionMessages);
+    return revisedResponse;
   } catch (error: any) {
     console.error('Claude API error:', error?.message || error);
     console.error('Error details:', JSON.stringify(error, null, 2));
