@@ -79,6 +79,30 @@ export const sessionsApi = {
     }),
 };
 
+// Reviews API
+export interface CoachReview {
+  id: string;
+  session_id: string;
+  message_id: string;
+  verdict: 'PASS' | 'NUDGE';
+  violations: string[];
+  feedback: string;
+  original_response: string;
+  revised: boolean;
+  created_at: string;
+}
+
+export const reviewsApi = {
+  getAll: (filters?: { session_id?: string; verdict?: string; limit?: number }) => {
+    const params = new URLSearchParams();
+    if (filters?.session_id) params.set('session_id', filters.session_id);
+    if (filters?.verdict) params.set('verdict', filters.verdict);
+    if (filters?.limit) params.set('limit', String(filters.limit));
+    const qs = params.toString();
+    return apiFetch<{ reviews: CoachReview[] }>(`/reviews${qs ? `?${qs}` : ''}`);
+  },
+};
+
 // Chat API
 export const chatApi = {
   // Send a message and get AI response
