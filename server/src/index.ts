@@ -7,6 +7,7 @@ import { initializeDatabase } from './db';
 import authRoutes, { passport, initializePassportStrategy } from './routes/auth';
 import sessionsRoutes from './routes/sessions';
 import chatRoutes from './routes/chat';
+import reviewsRoutes from './routes/reviews';
 
 // Validate configuration
 validateConfig();
@@ -53,6 +54,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/sessions', sessionsRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/reviews', reviewsRoutes);
 
 // Error handling middleware
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {

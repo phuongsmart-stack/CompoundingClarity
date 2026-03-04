@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { requireAuth } from '../middleware/auth';
-import { getSession, getSessionMessages, addMessage } from '../db';
+import { getSession, getSessionMessages, addMessage, addCoachReview } from '../db';
 import { generateResponse } from '../services/claude';
 
 const router = Router();
@@ -43,12 +43,25 @@ router.post('/message', requireAuth, async (req, res) => {
     const userMessageId = uuidv4();
     const userMessage = await addMessage(userMessageId, sessionId, 'user', content);
 
-    // Generate AI response
-    const aiResponse = await generateResponse(history, content);
+    // Generate AI response (with senior coach review)
+    const { response: aiResponse, review } = await generateResponse(history, content);
 
     // Save AI response
     const assistantMessageId = uuidv4();
     const assistantMessage = await addMessage(assistantMessageId, sessionId, 'assistant', aiResponse);
+
+    // Save senior coach review
+    await addCoachReview({
+      id: uuidv4(),
+      session_id: sessionId,
+      message_id: assistantMessageId,
+      verdict: review.verdict,
+      violations: review.violations,
+      feedback: review.feedback,
+      original_response: review.original_response,
+      revised: review.revised,
+      created_at: new Date().toISOString(),
+    });
 
     res.json({
       userMessage,

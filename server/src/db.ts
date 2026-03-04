@@ -15,4 +15,8 @@ export {
   Message,
   addMessage,
   getSessionMessages,
+  CoachReview,
+  addCoachReview,
+  getSessionReviews,
+  getAllReviews,
 } from './db-firestore';

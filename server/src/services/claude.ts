@@ -805,10 +805,18 @@ async function callCoach(messages: Anthropic.MessageParam[]): Promise<string> {
 // Flow: Coach → Senior Review → (if nudged) Coach revises with feedback
 // ---------------------------------------------------------------------------
 
+export interface GenerateResponseResult {
+  response: string;
+  review: ReviewResult & {
+    original_response: string;
+    revised: boolean;
+  };
+}
+
 export async function generateResponse(
   conversationHistory: Message[],
   userMessage: string
-): Promise<string> {
+): Promise<GenerateResponseResult> {
   const messages: Anthropic.MessageParam[] = conversationHistory.map(msg => ({
     role: msg.role as 'user' | 'assistant',
     content: msg.content,
@@ -832,7 +840,10 @@ export async function generateResponse(
     );
 
     if (review.verdict === 'PASS') {
-      return coachResponse;
+      return {
+        response: coachResponse,
+        review: { ...review, original_response: coachResponse, revised: false },
+      };
     }
 
     // Step 3: Coach revises with supervisor feedback (one attempt, no loop)
@@ -856,7 +867,10 @@ export async function generateResponse(
     ];
 
     const revisedResponse = await callCoach(revisionMessages);
-    return revisedResponse;
+    return {
+      response: revisedResponse,
+      review: { ...review, original_response: coachResponse, revised: true },
+    };
   } catch (error: any) {
     console.error('Claude API error:', error?.message || error);
     console.error('Error details:', JSON.stringify(error, null, 2));

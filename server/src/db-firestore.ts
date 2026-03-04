@@ -142,3 +142,50 @@ export async function getSessionMessages(sessionId: string): Promise<Message[]> 
 
   return snapshot.docs.map(doc => doc.data() as Message);
 }
+
+// Coach review operations
+export interface CoachReview {
+  id: string;
+  session_id: string;
+  message_id: string;
+  verdict: 'PASS' | 'NUDGE';
+  violations: string[];
+  feedback: string;
+  original_response: string;
+  revised: boolean;
+  created_at: string;
+}
+
+const reviewsCollection = firestore.collection('coach_reviews');
+
+export async function addCoachReview(review: CoachReview): Promise<CoachReview> {
+  await reviewsCollection.doc(review.id).set(review);
+  return review;
+}
+
+export async function getSessionReviews(sessionId: string): Promise<CoachReview[]> {
+  const snapshot = await reviewsCollection
+    .where('session_id', '==', sessionId)
+    .orderBy('created_at', 'asc')
+    .get();
+
+  return snapshot.docs.map(doc => doc.data() as CoachReview);
+}
+
+export async function getAllReviews(filters?: {
+  verdict?: string;
+  limit?: number;
+}): Promise<CoachReview[]> {
+  let query: FirebaseFirestore.Query = reviewsCollection.orderBy('created_at', 'desc');
+
+  if (filters?.verdict) {
+    query = query.where('verdict', '==', filters.verdict);
+  }
+
+  if (filters?.limit) {
+    query = query.limit(filters.limit);
+  }
+
+  const snapshot = await query.get();
+  return snapshot.docs.map(doc => doc.data() as CoachReview);
+}
