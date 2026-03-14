@@ -22,6 +22,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/session" element={<Session />} />
+            <Route path="/session/:sessionId" element={<Session />} />
             <Route path="/history" element={<SessionHistory />} />
             <Route path="/history/:id" element={<SessionDetail />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

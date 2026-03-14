@@ -7,7 +7,7 @@ import { chatApi, Message } from "@/api";
 interface ChatStepProps {
   sessionId: string;
   onEndSession: () => void;
-  initialMessages?: Message[];
+  initialMessages?: Message[] | null;
 }
 
 const ChatStep = ({ sessionId, onEndSession, initialMessages }: ChatStepProps) => {
@@ -27,15 +27,13 @@ const ChatStep = ({ sessionId, onEndSession, initialMessages }: ChatStepProps) =
     scrollToBottom();
   }, [messages]);
 
-  // Send initial greeting from AI when chat starts or load initial messages
+  // Load initial messages (resumed session) or show greeting (new session)
   useEffect(() => {
     if (!initialMessageSent.current && sessionId) {
       initialMessageSent.current = true;
       if (initialMessages && initialMessages.length > 0) {
-        // Load existing messages when continuing a session
         setMessages(initialMessages);
       } else {
-        // Add a greeting message for new sessions
         setMessages([
           {
             id: "greeting",
@@ -114,9 +112,9 @@ const ChatStep = ({ sessionId, onEndSession, initialMessages }: ChatStepProps) =
   const currentTurnStart = Math.max(0, messages.length - 2);
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="fixed inset-0 z-10 flex flex-col bg-background">
       {/* Header */}
-      <header className="border-b border-border bg-background/95 backdrop-blur-sm px-6 py-4">
+      <header className="border-b border-border bg-background/95 backdrop-blur-sm px-6 py-4 flex-shrink-0">
         <div className="max-w-3xl mx-auto flex items-center justify-between">
           <div>
             <h1 className="font-serif text-xl text-foreground">
@@ -145,7 +143,7 @@ const ChatStep = ({ sessionId, onEndSession, initialMessages }: ChatStepProps) =
       )}
 
       {/* Chat area */}
-      <div className="flex-1 overflow-y-auto px-6 py-8">
+      <div className="flex-1 min-h-0 overflow-y-auto px-6 py-8">
         <div className="max-w-3xl mx-auto space-y-6">
           {messages.map((message, index) => {
             const isCurrentTurn = index >= currentTurnStart;
@@ -196,7 +194,7 @@ const ChatStep = ({ sessionId, onEndSession, initialMessages }: ChatStepProps) =
       </div>
 
       {/* Input area */}
-      <div className="border-t border-border bg-background/95 backdrop-blur-sm px-6 py-4">
+      <div className="flex-shrink-0 border-t border-border bg-background/95 backdrop-blur-sm px-6 py-4">
         <div className="max-w-3xl mx-auto">
           <div className="flex gap-3 items-end">
             <Textarea
