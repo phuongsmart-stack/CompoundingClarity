@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Send, LogOut } from "lucide-react";
 import { chatApi, Message } from "@/api";
+import ReactMarkdown from "react-markdown";
 
 interface ChatStepProps {
   sessionId: string;
@@ -168,7 +169,13 @@ const ChatStep = ({ sessionId, onEndSession, initialMessages }: ChatStepProps) =
                       Clarity AI
                     </p>
                   )}
-                  <p className="leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                  {isAssistant ? (
+                    <div className="leading-relaxed prose prose-sm max-w-none [&>p]:my-2 [&>p:first-child]:mt-0 [&>p:last-child]:mb-0">
+                      <ReactMarkdown>{message.content}</ReactMarkdown>
+                    </div>
+                  ) : (
+                    <p className="leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                  )}
                 </div>
               </div>
             );
