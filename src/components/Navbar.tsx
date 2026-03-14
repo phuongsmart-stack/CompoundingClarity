@@ -1,7 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { Sparkles } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 const Navbar = () => {
+  const { user } = useAuth();
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/50">
       <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
@@ -27,6 +29,14 @@ const Navbar = () => {
           >
             About
           </a>
+          {user && (
+            <a
+              href="/history"
+              className="text-muted-foreground hover:text-foreground transition-colors text-sm"
+            >
+              Past Sessions
+            </a>
+          )}
         </div>
 
         {/* CTA */}

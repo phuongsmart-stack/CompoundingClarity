@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { requireAuth } from '../middleware/auth';
-import { getSession, getSessionMessages, addMessage } from '../db';
+import { getSession, getSessionMessages, addMessage, getUserSessions } from '../db';
 import { generateResponse } from '../services/claude';
 
 const router = Router();
@@ -40,14 +40,28 @@ router.post('/message', requireAuth, async (req, res) => {
     const history = await getSessionMessages(sessionId);
     console.log('Conversation history:', history.length, 'messages');
 
+    // Get past sessions for context (exclude current session)
+    const allSessions = await getUserSessions(req.user!.id);
+    const pastSessions = allSessions.filter(s => s.id !== sessionId && s.status === 'ended');
+    const recentPastSessions = pastSessions.slice(0, 2); // Get 2 most recent past sessions
+    console.log('Found', recentPastSessions.length, 'recent past sessions for context');
+
+    // Fetch messages from past sessions
+    const pastSessionsWithMessages = await Promise.all(
+      recentPastSessions.map(async (session) => ({
+        session,
+        messages: await getSessionMessages(session.id),
+      }))
+    );
+
     // Save user message
     const userMessageId = uuidv4();
     const userMessage = await addMessage(userMessageId, sessionId, 'user', content);
     console.log('User message saved:', userMessageId);
 
-    // Generate AI response
+    // Generate AI response with past session context
     console.log('Generating AI response...');
-    const aiResponse = await generateResponse(history, content);
+    const aiResponse = await generateResponse(history, content, pastSessionsWithMessages);
     console.log('AI response generated:', aiResponse.substring(0, 100));
 
     // Save AI response

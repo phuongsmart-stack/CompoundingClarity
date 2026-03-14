@@ -8,7 +8,9 @@
       "Bash(pkill:*)",
       "Bash(sqlite3:*)",
       "Bash(npx tsx:*)",
-      "Bash(git remote add:*)"
+      "Bash(git remote add:*)",
+      "Bash(brew install:*)",
+      "Bash(gcloud auth:*)"
     ]
   }
 }

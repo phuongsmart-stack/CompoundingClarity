@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { format } from 'date-fns';
 import { config } from '../config';
-import { Message } from '../db';
+import { Message, ChatSession } from '../db';
 
 const client = new Anthropic({
   apiKey: config.anthropicApiKey,
@@ -690,9 +691,61 @@ The client is whole, capable, and resourceful. Your job is to help them access w
 
 **When in doubt, ask less and listen more.**`;
 
+interface PastSessionContext {
+  session: ChatSession;
+  messages: Message[];
+}
+
+function formatPastSessionsContext(pastSessions: PastSessionContext[]): string {
+  if (pastSessions.length === 0) {
+    return '';
+  }
+
+  const contextParts = pastSessions.map((sessionData, index) => {
+    const { session, messages } = sessionData;
+    const sessionDate = format(new Date(session.created_at), 'MMMM dd, yyyy');
+    const messageCount = messages.length;
+
+    // Extract key themes from the conversation
+    const conversationSummary = messages
+      .slice(0, 20) // Limit to first 20 messages to stay within token limits
+      .map(msg => `${msg.role === 'user' ? 'Client' : 'Coach'}: ${msg.content}`)
+      .join('\n\n');
+
+    return `## Past Session ${index + 1} - ${sessionDate}
+
+This session had ${messageCount} messages. Here's the conversation:
+
+${conversationSummary}
+
+---`;
+  });
+
+  return `
+# CLIENT HISTORY CONTEXT
+
+You have worked with this client before. Below are their most recent past sessions. Use this context to:
+- Reference patterns you've noticed before
+- Build continuity ("You mentioned last time that...")
+- Connect themes across sessions
+- Show that you remember their journey
+
+**Important:** Only reference past sessions naturally when relevant. Don't force it.
+
+${contextParts.join('\n\n')}
+
+---
+
+# CURRENT SESSION (Today)
+
+Continue from where you left off. The client expects you to remember them.
+`;
+}
+
 export async function generateResponse(
   conversationHistory: Message[],
-  userMessage: string
+  userMessage: string,
+  pastSessions: PastSessionContext[] = []
 ): Promise<string> {
   const messages: Anthropic.MessageParam[] = conversationHistory.map(msg => ({
     role: msg.role as 'user' | 'assistant',
@@ -706,11 +759,21 @@ export async function generateResponse(
   });
 
   try {
+    // Build system prompt with past session context
+    const pastSessionContext = formatPastSessionsContext(pastSessions);
+    const fullSystemPrompt = pastSessionContext
+      ? `${SYSTEM_PROMPT}\n\n${pastSessionContext}`
+      : SYSTEM_PROMPT;
+
     console.log('Calling Claude API with', messages.length, 'messages');
+    if (pastSessions.length > 0) {
+      console.log('Including context from', pastSessions.length, 'past sessions');
+    }
+
     const response = await client.messages.create({
       model: 'claude-sonnet-4-5-20250929',
       max_tokens: 4096,
-      system: SYSTEM_PROMPT,
+      system: fullSystemPrompt,
       messages,
     });
 

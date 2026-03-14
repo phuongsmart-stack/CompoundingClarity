@@ -7,9 +7,10 @@ import { chatApi, Message } from "@/api";
 interface ChatStepProps {
   sessionId: string;
   onEndSession: () => void;
+  initialMessages?: Message[];
 }
 
-const ChatStep = ({ sessionId, onEndSession }: ChatStepProps) => {
+const ChatStep = ({ sessionId, onEndSession, initialMessages }: ChatStepProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
@@ -26,22 +27,27 @@ const ChatStep = ({ sessionId, onEndSession }: ChatStepProps) => {
     scrollToBottom();
   }, [messages]);
 
-  // Send initial greeting from AI when chat starts
+  // Send initial greeting from AI when chat starts or load initial messages
   useEffect(() => {
     if (!initialMessageSent.current && sessionId) {
       initialMessageSent.current = true;
-      // Add a greeting message
-      setMessages([
-        {
-          id: "greeting",
-          session_id: sessionId,
-          role: "assistant",
-          content: "Welcome. I'm here to help you examine your thoughts and find clarity. What's been on your mind lately? Is there a belief or situation you'd like to explore together?",
-          created_at: new Date().toISOString(),
-        },
-      ]);
+      if (initialMessages && initialMessages.length > 0) {
+        // Load existing messages when continuing a session
+        setMessages(initialMessages);
+      } else {
+        // Add a greeting message for new sessions
+        setMessages([
+          {
+            id: "greeting",
+            session_id: sessionId,
+            role: "assistant",
+            content: "Welcome. I'm here to help you examine your thoughts and find clarity. What's been on your mind lately? Is there a belief or situation you'd like to explore together?",
+            created_at: new Date().toISOString(),
+          },
+        ]);
+      }
     }
-  }, [sessionId]);
+  }, [sessionId, initialMessages]);
 
   const handleSend = async () => {
     if (!input.trim() || isTyping) return;
